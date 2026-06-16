@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { Plus, Settings2 } from 'lucide-react'
+import { Plus, Settings2, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import type { Budget, Category, Expense, CategoryWithStats } from '@/types'
@@ -12,6 +12,8 @@ import BudgetOverview from '@/components/BudgetOverview'
 import CategoryCard from '@/components/CategoryCard'
 import ExpenseList from '@/components/ExpenseList'
 import ExpenseModal from '@/components/ExpenseModal'
+import ExpenseDetailModal from '@/components/ExpenseDetailModal'
+import ResetBudgetModal from '@/components/ResetBudgetModal'
 import Notifications from '@/components/Notifications'
 
 const SpendingByCategory = dynamic(() => import('@/components/charts/SpendingByCategory'), { ssr: false })
@@ -67,6 +69,15 @@ export default function DashboardPage() {
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined)
+  const [viewingExpense, setViewingExpense] = useState<Expense | null>(null)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [memeVariants, setMemeVariants] = useState<Record<string, number>>(() => {
+    try {
+      if (typeof window === 'undefined') return {}
+      const saved = localStorage.getItem('budget-meme-variants')
+      return saved ? JSON.parse(saved) : {}
+    } catch { return {} }
+  })
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -130,6 +141,24 @@ export default function DashboardPage() {
     setEditingExpense(expense)
     setSelectedCategoryId(undefined)
     setShowExpenseModal(true)
+  }
+
+  const openViewExpense = (expense: Expense) => {
+    setViewingExpense(expense)
+  }
+
+  const handleVariantChange = (id: string, variant: number) => {
+    const next = { ...memeVariants, [id]: variant }
+    setMemeVariants(next)
+    try { localStorage.setItem('budget-meme-variants', JSON.stringify(next)) } catch {}
+  }
+
+  const handleResetBudget = async () => {
+    if (!budget) return
+    await supabase.from('expenses').delete().eq('budget_id', budget.id)
+    await supabase.from('categories').delete().eq('budget_id', budget.id)
+    await supabase.from('budgets').delete().eq('id', budget.id)
+    router.push('/setup')
   }
 
   const total_spent = expenses.reduce((sum, e) => sum + parseFloat(e.amount.toString()), 0)
@@ -208,6 +237,13 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setShowResetModal(true)}
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                    title="Reset budget"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+                  <button
                     onClick={() => router.push('/setup')}
                     className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-xl transition-all"
                     title="Manage budget"
@@ -238,9 +274,11 @@ export default function DashboardPage() {
             <ExpenseList
               expenses={expenses}
               categories={categories}
+              memeVariants={memeVariants}
               onEdit={openEditExpense}
               onDelete={handleDelete}
               onAdd={() => openAddExpense()}
+              onView={openViewExpense}
             />
           </div>
         )}
@@ -254,6 +292,24 @@ export default function DashboardPage() {
         budgetId={budget?.id || ''}
         expense={editingExpense}
         onSuccess={loadDashboard}
+      />
+
+      {/* Reset Budget Modal */}
+      <ResetBudgetModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={handleResetBudget}
+      />
+
+      {/* Expense Detail Modal */}
+      <ExpenseDetailModal
+        expense={viewingExpense}
+        categories={categories}
+        memeVariant={viewingExpense ? (memeVariants[viewingExpense.id] ?? 0) : 0}
+        onVariantChange={handleVariantChange}
+        onClose={() => setViewingExpense(null)}
+        onEdit={expense => { setViewingExpense(null); openEditExpense(expense) }}
+        onDelete={async id => { setViewingExpense(null); await handleDelete(id) }}
       />
     </div>
   )

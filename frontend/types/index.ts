@@ -23,6 +23,7 @@ export interface Expense {
   title: string
   amount: number
   date: string
+  attachment_url?: string | null
   created_at: string
 }
 
