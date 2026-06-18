@@ -31,7 +31,7 @@ function getCategoryEmoji(name: string): string {
 }
 
 function formatMoney(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  return `${n.toFixed(3)} KD`
 }
 
 interface CategoryCardProps {

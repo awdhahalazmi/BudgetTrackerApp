@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, DollarSign, Calendar, Tag, FileText, AlertCircle, Paperclip, Upload, Trash2, FileImage, File } from 'lucide-react'
+import { X, Calendar, Tag, FileText, AlertCircle, Paperclip, Upload, Trash2, FileImage, File } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Category, Expense } from '@/types'
 import { format } from 'date-fns'
@@ -197,16 +197,16 @@ export default function ExpenseModal({
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="number"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
-                min="0.01"
-                step="0.01"
-                className="input-field pl-10"
+                placeholder="0.000"
+                min="0.001"
+                step="0.001"
+                className="input-field pr-10"
               />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">KD</span>
             </div>
           </div>
 

@@ -8,7 +8,7 @@ interface BudgetOverviewProps {
 }
 
 function formatMoney(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+  return `${n.toFixed(3)} KD`
 }
 
 export default function BudgetOverview({ monthly_budget, total_spent, remaining, percentage_used }: BudgetOverviewProps) {
@@ -90,7 +90,7 @@ export default function BudgetOverview({ monthly_budget, total_spent, remaining,
           />
         </div>
         <div className="flex justify-between text-xs text-slate-400 mt-2">
-          <span>$0</span>
+          <span>0 KD</span>
           <span>{formatMoney(monthly_budget)}</span>
         </div>
       </div>

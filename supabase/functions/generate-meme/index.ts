@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
 EXPENSE:
 - Title: "${title}"
-- Amount: $${amount}
+- Amount: ${amount} KD
 - Category: ${category}
 - Style: ${styleHint} (variant ${variant + 1} — ${variant > 0 ? 'pick a DIFFERENT template and joke than the obvious default' : 'use the most fitting classic meme'})
 - Variety seed: ${uniqueSuffix} (internal use only — do NOT include this in any meme line)
@@ -127,7 +127,7 @@ RESPONSE FORMAT:
       console.error('AI returned non-JSON:', rawContent)
       parsed = {
         template: 'fine',
-        lines: [`Spent $${amount} on ${title}`, 'This is fine'],
+        lines: [`Spent ${amount} KD on ${title}`, 'This is fine'],
       }
     }
 

@@ -41,7 +41,7 @@ export default function Notifications({ categories }: NotificationsProps) {
       results.push({
         key: `danger-${cat.id}`,
         type: 'danger',
-        message: `${cat.name} has exceeded its budget by $${Math.abs(cat.remaining).toFixed(2)}!`,
+        message: `${cat.name} has exceeded its budget by ${Math.abs(cat.remaining).toFixed(3)} KD!`,
       })
     } else if (cat.percentage >= 80) {
       results.push({

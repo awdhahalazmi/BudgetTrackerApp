@@ -34,7 +34,7 @@ export function generateMeme(title: string, amount: number, categoryName: string
   // Include expenseId so different expenses always get different memes
   // even when title / amount / category are identical
   const seed = title + String(amount) + categoryName + expenseId
-  const $ = `$${amount}`
+  const $ = `${amount} KD`
 
   // ── Coffee / Drinks ──
   if (/coffee|latte|espresso|starbucks|cappuccino|boba|bubble tea|tea/.test(t)) {

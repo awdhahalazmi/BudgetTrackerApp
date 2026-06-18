@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, DollarSign, Calendar, Tag, Paperclip, ExternalLink, FileText, File, Laugh, Shuffle } from 'lucide-react'
+import { X, Banknote, Calendar, Tag, Paperclip, ExternalLink, FileText, File, Laugh, Shuffle } from 'lucide-react'
 import type { Expense, CategoryWithStats } from '@/types'
 import { format, parseISO } from 'date-fns'
 import { fetchMemeUrl } from '@/lib/memeApi'
@@ -96,7 +96,7 @@ export default function ExpenseDetailModal({
           <p className="text-white/70 text-sm mb-1">Expense Details</p>
           <h2 className="text-2xl font-bold pr-8">{expense.title}</h2>
           <p className="text-3xl font-bold mt-2">
-            ${parseFloat(expense.amount.toString()).toFixed(2)}
+            {parseFloat(expense.amount.toString()).toFixed(3)} KD
           </p>
         </div>
 
@@ -136,12 +136,12 @@ export default function ExpenseDetailModal({
             {/* Amount */}
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-violet-600" />
+                <Banknote className="w-4 h-4 text-violet-600" />
               </div>
               <div>
                 <p className="text-xs text-slate-400">Amount</p>
                 <p className="text-sm font-bold text-rose-600">
-                  -${parseFloat(expense.amount.toString()).toFixed(2)}
+                  -{parseFloat(expense.amount.toString()).toFixed(3)} KD
                 </p>
               </div>
             </div>

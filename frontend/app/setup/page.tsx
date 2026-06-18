@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle, DollarSign, Wallet, Sparkles } from 'lucide-react'
+import { Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle, Wallet, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 
@@ -163,13 +163,12 @@ export default function SetupPage() {
           {step === 1 && (
             <div className="p-8 text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <DollarSign className="w-10 h-10 text-violet-600" />
+                <span className="text-2xl font-bold text-violet-600">KD</span>
               </div>
               <h2 className="text-3xl font-bold text-slate-800 mb-2">What&apos;s your monthly budget?</h2>
               <p className="text-slate-500 mb-10">Set the total amount you want to spend this month</p>
 
               <div className="flex items-center justify-center gap-2 mb-8">
-                <span className="text-5xl font-light text-slate-400">$</span>
                 <input
                   type="number"
                   value={monthlyBudget}
@@ -178,6 +177,7 @@ export default function SetupPage() {
                   min="1"
                   className="text-5xl font-bold text-violet-600 w-48 text-center bg-transparent border-b-2 border-violet-200 focus:border-violet-500 outline-none pb-2 transition-colors"
                 />
+                <span className="text-5xl font-light text-slate-400">KD</span>
               </div>
 
               <p className="text-slate-400 text-sm mb-8">You can always adjust this later</p>
@@ -197,16 +197,16 @@ export default function SetupPage() {
             <div className="p-8">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-2xl font-bold text-slate-800">Customize your categories</h2>
-                <span className="text-slate-500 text-sm font-medium">${budget.toFixed(2)} budget</span>
+                <span className="text-slate-500 text-sm font-medium">{budget.toFixed(3)} KD budget</span>
               </div>
               <p className="text-slate-500 mb-4">Assign amounts to each spending category</p>
 
               {/* Allocation bar */}
               <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
                 <div className="flex justify-between items-center mb-2 text-sm">
-                  <span className="text-slate-600 font-medium">Allocated: <strong>${totalAllocated.toFixed(2)}</strong></span>
+                  <span className="text-slate-600 font-medium">Allocated: <strong>{totalAllocated.toFixed(3)} KD</strong></span>
                   <span className={`font-semibold ${Math.abs(remaining) < 0.01 ? 'text-emerald-600' : remaining > 0 ? 'text-amber-600' : 'text-rose-600'}`}>
-                    {Math.abs(remaining) < 0.01 ? '✓ Perfect!' : remaining > 0 ? `$${remaining.toFixed(2)} remaining` : `$${Math.abs(remaining).toFixed(2)} over!`}
+                    {Math.abs(remaining) < 0.01 ? '✓ Perfect!' : remaining > 0 ? `${remaining.toFixed(3)} KD remaining` : `${Math.abs(remaining).toFixed(3)} KD over!`}
                   </span>
                 </div>
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -239,15 +239,15 @@ export default function SetupPage() {
                       className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                     />
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
                       <input
                         type="number"
                         value={cat.allocated_amount || ''}
                         onChange={e => updateCategory(cat.id, 'allocated_amount', parseFloat(e.target.value) || 0)}
                         placeholder="0"
                         min="0"
-                        className="w-28 pl-6 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                        className="w-28 pl-2 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                       />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">KD</span>
                     </div>
                     <button
                       onClick={() => removeCategory(cat.id)}
@@ -299,7 +299,7 @@ export default function SetupPage() {
               <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl p-5 mb-4 border border-violet-100">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 font-medium">Monthly Budget</span>
-                  <span className="text-2xl font-bold text-violet-600">${budget.toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-violet-600">{budget.toFixed(3)} KD</span>
                 </div>
               </div>
 
@@ -309,7 +309,7 @@ export default function SetupPage() {
                     <span className="text-xl">{cat.emoji}</span>
                     <span className="flex-1 font-medium text-slate-700">{cat.name}</span>
                     <div className="text-right">
-                      <span className="font-semibold text-slate-800">${cat.allocated_amount.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-800">{cat.allocated_amount.toFixed(3)} KD</span>
                       <p className="text-xs text-slate-400">{((cat.allocated_amount / budget) * 100).toFixed(0)}%</p>
                     </div>
                   </div>

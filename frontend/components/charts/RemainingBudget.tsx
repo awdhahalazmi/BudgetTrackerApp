@@ -17,9 +17,9 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<
         <p className="font-semibold text-slate-800 mb-1">{cat.name}</p>
         <p className={isOver ? 'text-rose-600' : 'text-emerald-600'}>
           {isOver ? 'Over by ' : 'Remaining: '}
-          ${Math.abs(cat.remaining).toFixed(2)}
+          {Math.abs(cat.remaining).toFixed(3)} KD
         </p>
-        <p className="text-slate-500">Budget: ${parseFloat(cat.allocated_amount.toString()).toFixed(2)}</p>
+        <p className="text-slate-500">Budget: {parseFloat(cat.allocated_amount.toString()).toFixed(3)} KD</p>
       </div>
     )
   }
@@ -63,7 +63,7 @@ export default function RemainingBudget({ categories }: Props) {
           >
             <XAxis
               type="number"
-              tickFormatter={v => `$${v}`}
+              tickFormatter={v => `${v} KD`}
               tick={{ fontSize: 10, fill: '#94a3b8' }}
               tickLine={false}
               axisLine={false}

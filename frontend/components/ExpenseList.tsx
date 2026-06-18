@@ -142,7 +142,7 @@ function ExpenseCard({ expense, catName, gradient, badge, variant, onView, onEdi
             {expense.title}
           </p>
           <span className="font-bold text-rose-600 text-sm flex-shrink-0">
-            -${parseFloat(expense.amount.toString()).toFixed(2)}
+            -{parseFloat(expense.amount.toString()).toFixed(3)} KD
           </span>
         </div>
 

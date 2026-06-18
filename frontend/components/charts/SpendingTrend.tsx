@@ -16,7 +16,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
       <div className="bg-white shadow-lg rounded-xl px-4 py-3 border border-slate-100 text-sm">
         <p className="font-semibold text-slate-700 mb-1">{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-violet-600">${p.value.toFixed(2)}</p>
+          <p key={i} className="text-violet-600">{p.value.toFixed(3)} KD</p>
         ))}
       </div>
     )
@@ -100,7 +100,7 @@ export default function SpendingTrend({ expenses }: Props) {
               interval="preserveStartEnd"
             />
             <YAxis
-              tickFormatter={v => `$${v}`}
+              tickFormatter={v => `${v} KD`}
               tick={{ fontSize: 10, fill: '#94a3b8' }}
               tickLine={false}
               axisLine={false}
