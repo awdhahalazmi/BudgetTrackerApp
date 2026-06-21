@@ -256,23 +256,6 @@ export default function UpgradePage() {
                 )}
               </div>
 
-              {/* Test card hint — only for Visa/Master */}
-              {selectedMethod && /visa|master/i.test(selectedMethod.nameEn) && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-0.5">
-                  <p className="font-semibold">🧪 Test card:</p>
-                  <p>Card: <span className="font-mono font-bold">4508750015741019</span></p>
-                  <p>Expiry: <span className="font-mono">Any</span> · CVV: <span className="font-mono">Any</span></p>
-                </div>
-              )}
-
-              {selectedMethod && /knet/i.test(selectedMethod.nameEn) && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-0.5">
-                  <p className="font-semibold">🧪 Test card:</p>
-                  <p>Card: <span className="font-mono font-bold">8888880000000001</span></p>
-                  <p>Expiry: <span className="font-mono">09/30</span> · PIN: <span className="font-mono">Any 4 digits</span></p>
-                </div>
-              )}
-
               {error && (
                 <p className="text-rose-600 text-sm mb-4 p-3 bg-rose-50 rounded-xl border border-rose-200">
                   {error}
