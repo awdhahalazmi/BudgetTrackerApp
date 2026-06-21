@@ -19,7 +19,7 @@ const FEATURES = [
   {
     icon: Bell,
     title: 'Due Date Reminders',
-    desc: 'See what's coming up and never miss a payment deadline.',
+    desc: "See what's coming up and never miss a payment deadline.",
     color: 'bg-blue-100 text-blue-600',
   },
   {
@@ -231,7 +231,13 @@ export default function UpgradePage() {
                 )}
               </button>
 
-              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-left space-y-1">
+                <p className="font-semibold">🧪 Test mode — use this card:</p>
+                <p>Card: <span className="font-mono font-bold">4508750015741019</span></p>
+                <p>Expiry: <span className="font-mono">Any</span> &nbsp; CVV: <span className="font-mono">Any</span></p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-400">
                 <Shield className="w-3.5 h-3.5" />
                 Secured by MyFatoorah · Test mode active
               </div>

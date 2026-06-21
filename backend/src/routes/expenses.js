@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
@@ -13,7 +12,7 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'budget_id is required' })
     }
 
-    let query = supabase
+    let query = req.db
       .from('expenses')
       .select('*')
       .eq('budget_id', budget_id)
@@ -44,7 +43,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await req.db
       .from('expenses')
       .insert({ user_id: userId, budget_id, category_id, title, amount, date })
       .select()
@@ -71,7 +70,7 @@ router.put('/:id', async (req, res) => {
     if (amount !== undefined) updates.amount = amount
     if (date !== undefined) updates.date = date
 
-    const { data, error } = await supabase
+    const { data, error } = await req.db
       .from('expenses')
       .update(updates)
       .eq('id', id)
@@ -94,7 +93,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params
     const userId = req.user.id
 
-    const { error } = await supabase
+    const { error } = await req.db
       .from('expenses')
       .delete()
       .eq('id', id)

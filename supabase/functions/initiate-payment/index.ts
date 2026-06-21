@@ -66,8 +66,16 @@ serve(async (req: Request) => {
     })
     const initData = await initRes.json()
 
-    // Pick first available payment method (KNET for Kuwait)
-    const paymentMethodId = initData.Data?.PaymentMethods?.[0]?.PaymentMethodId ?? 2
+    // Prefer Visa/Master over KNET — KNET test pages often block keyboard input.
+    // Fall back to first available method, then hard-coded 2 (Visa/Master default).
+    const methods: Array<{ PaymentMethodId: number; PaymentMethodEn?: string }> =
+      initData.Data?.PaymentMethods ?? []
+    const visaMethod = methods.find(m =>
+      /visa|master|credit|card/i.test(m.PaymentMethodEn ?? '')
+    )
+    const paymentMethodId = visaMethod?.PaymentMethodId
+      ?? methods[0]?.PaymentMethodId
+      ?? 2
 
     // Step 2: Create the payment invoice
     const execRes = await fetch(`${MYFATOORAH_BASE}/v2/ExecutePayment`, {

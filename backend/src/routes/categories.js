@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
@@ -13,7 +12,7 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'budget_id is required' })
     }
 
-    const { data: categories, error: catError } = await supabase
+    const { data: categories, error: catError } = await req.db
       .from('categories')
       .select('*')
       .eq('budget_id', budget_id)
@@ -23,7 +22,7 @@ router.get('/', async (req, res) => {
     if (catError) throw catError
 
     // Compute spent amounts from expenses
-    const { data: expenses, error: expError } = await supabase
+    const { data: expenses, error: expError } = await req.db
       .from('expenses')
       .select('category_id, amount')
       .eq('budget_id', budget_id)
@@ -57,7 +56,7 @@ router.post('/', async (req, res) => {
     const { budget_id, name, allocated_amount } = req.body
     const userId = req.user.id
 
-    const { data, error } = await supabase
+    const { data, error } = await req.db
       .from('categories')
       .insert({ user_id: userId, budget_id, name, allocated_amount })
       .select()
@@ -82,7 +81,7 @@ router.put('/:id', async (req, res) => {
     if (name !== undefined) updates.name = name
     if (allocated_amount !== undefined) updates.allocated_amount = allocated_amount
 
-    const { data, error } = await supabase
+    const { data, error } = await req.db
       .from('categories')
       .update(updates)
       .eq('id', id)
@@ -105,7 +104,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params
     const userId = req.user.id
 
-    const { error } = await supabase
+    const { error } = await req.db
       .from('categories')
       .delete()
       .eq('id', id)

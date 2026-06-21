@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js'
+import { supabase, createUserClient } from '../lib/supabase.js'
 
 export async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization
@@ -16,5 +16,6 @@ export async function authenticate(req, res, next) {
   }
 
   req.user = user
+  req.db = createUserClient(token) // user-scoped Supabase client for route handlers
   next()
 }

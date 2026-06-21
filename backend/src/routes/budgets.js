@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
@@ -9,7 +8,7 @@ router.get('/', async (req, res) => {
     const { month } = req.query
     const userId = req.user.id
 
-    let query = supabase
+    let query = req.db
       .from('budgets')
       .select('*')
       .eq('user_id', userId)
@@ -39,7 +38,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'monthly_budget and month are required' })
     }
 
-    const { data: budget, error: budgetError } = await supabase
+    const { data: budget, error: budgetError } = await req.db
       .from('budgets')
       .insert({ user_id: userId, monthly_budget, month })
       .select()
@@ -55,7 +54,7 @@ router.post('/', async (req, res) => {
         allocated_amount: c.allocated_amount,
       }))
 
-      const { error: catError } = await supabase
+      const { error: catError } = await req.db
         .from('categories')
         .insert(categoryRows)
 
@@ -75,7 +74,7 @@ router.put('/:id', async (req, res) => {
     const { monthly_budget } = req.body
     const userId = req.user.id
 
-    const { data, error } = await supabase
+    const { data, error } = await req.db
       .from('budgets')
       .update({ monthly_budget })
       .eq('id', id)
@@ -98,7 +97,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params
     const userId = req.user.id
 
-    const { error } = await supabase
+    const { error } = await req.db
       .from('budgets')
       .delete()
       .eq('id', id)
