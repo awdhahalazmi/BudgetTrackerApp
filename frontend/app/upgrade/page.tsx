@@ -4,63 +4,46 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CalendarDays, Bell, CheckCircle2, TrendingDown, RepeatIcon,
-  BarChart3, Shield, ArrowRight, Wallet, Lock,
+  Shield, ArrowRight, Wallet, Lock, Loader2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 
 const FEATURES = [
-  {
-    icon: CalendarDays,
-    title: 'Schedule Payments',
-    desc: 'Plan rent, loans, and bills ahead of time with exact due dates.',
-    color: 'bg-violet-100 text-violet-600',
-  },
-  {
-    icon: Bell,
-    title: 'Due Date Reminders',
-    desc: "See what's coming up and never miss a payment deadline.",
-    color: 'bg-blue-100 text-blue-600',
-  },
-  {
-    icon: CheckCircle2,
-    title: 'Paid / Unpaid Tracker',
-    desc: 'Mark payments as paid and track your monthly obligations at a glance.',
-    color: 'bg-emerald-100 text-emerald-600',
-  },
-  {
-    icon: CalendarDays,
-    title: 'Calendar View',
-    desc: 'Visualize all upcoming payments on a monthly calendar timeline.',
-    color: 'bg-amber-100 text-amber-600',
-  },
-  {
-    icon: TrendingDown,
-    title: 'Budget Impact Estimator',
-    desc: 'See exactly how much monthly budget remains after all planned payments.',
-    color: 'bg-rose-100 text-rose-600',
-  },
-  {
-    icon: RepeatIcon,
-    title: 'Recurring Payments',
-    desc: 'Set up Netflix, phone bills, and rent as automatic monthly recurring items.',
-    color: 'bg-purple-100 text-purple-600',
-  },
+  { icon: CalendarDays, title: 'Schedule Payments', desc: 'Plan rent, loans, and bills ahead of time with exact due dates.', color: 'bg-violet-100 text-violet-600' },
+  { icon: Bell, title: 'Due Date Reminders', desc: "See what's coming up and never miss a payment deadline.", color: 'bg-blue-100 text-blue-600' },
+  { icon: CheckCircle2, title: 'Paid / Unpaid Tracker', desc: 'Mark payments as paid and track monthly obligations at a glance.', color: 'bg-emerald-100 text-emerald-600' },
+  { icon: CalendarDays, title: 'Calendar View', desc: 'Visualize all upcoming payments on a monthly calendar timeline.', color: 'bg-amber-100 text-amber-600' },
+  { icon: TrendingDown, title: 'Budget Impact Estimator', desc: 'See exactly how much monthly budget remains after all planned payments.', color: 'bg-rose-100 text-rose-600' },
+  { icon: RepeatIcon, title: 'Recurring Payments', desc: 'Set up Netflix, phone bills, and rent as automatic monthly items.', color: 'bg-purple-100 text-purple-600' },
 ]
+
+interface PaymentMethod {
+  id: number
+  nameEn: string
+  nameAr: string
+  code: string
+  imageUrl: string
+  serviceCharge: number
+}
 
 export default function UpgradePage() {
   const router = useRouter()
   const [user, setUser] = useState<{ email?: string; id?: string; name?: string } | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [methods, setMethods] = useState<PaymentMethod[]>([])
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null)
+  const [loadingMethods, setLoadingMethods] = useState(true)
+  const [paying, setPaying] = useState(false)
   const [checking, setChecking] = useState(true)
   const [error, setError] = useState('')
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
   useEffect(() => {
-    const checkAuth = async () => {
+    const init = async () => {
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) { router.push('/login'); return }
 
-      // Redirect if already subscribed
       const { data: sub } = await supabase
         .from('planner_subscriptions')
         .select('status')
@@ -76,20 +59,36 @@ export default function UpgradePage() {
         name: u.user_metadata?.full_name || u.email?.split('@')[0] || 'User',
       })
       setChecking(false)
+
+      // Fetch available payment methods
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/get-payment-methods`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        const data = await res.json()
+        if (data.methods?.length) {
+          setMethods(data.methods)
+          setSelectedMethod(data.methods[0])
+        }
+      } catch {
+        setError('Could not load payment methods. Please refresh.')
+      } finally {
+        setLoadingMethods(false)
+      }
     }
-    checkAuth()
-  }, [router])
+    init()
+  }, [router, supabaseUrl])
 
   const handlePay = async () => {
-    if (!user) return
-    setLoading(true)
+    if (!user || !selectedMethod) return
+    setPaying(true)
     setError('')
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
       const callbackUrl = `${window.location.origin}/payment-status`
 
       const res = await fetch(`${supabaseUrl}/functions/v1/initiate-payment`, {
@@ -102,24 +101,21 @@ export default function UpgradePage() {
           customerName: user.name,
           customerEmail: user.email,
           callbackUrl,
+          paymentMethodId: selectedMethod.id,
         }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        if (data.error === 'already_subscribed') {
-          router.push('/payment-planner')
-          return
-        }
+        if (data.error === 'already_subscribed') { router.push('/payment-planner'); return }
         throw new Error(data.error || 'Payment initiation failed')
       }
 
-      // Redirect to MyFatoorah payment page
       window.location.href = data.paymentUrl
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
-      setLoading(false)
+      setPaying(false)
     }
   }
 
@@ -169,7 +165,7 @@ export default function UpgradePage() {
           })}
         </div>
 
-        {/* Pricing card */}
+        {/* Pricing + payment method card */}
         <div className="max-w-sm mx-auto">
           <div className="bg-white rounded-3xl shadow-xl border border-violet-100 overflow-hidden">
             {/* Card header */}
@@ -186,9 +182,9 @@ export default function UpgradePage() {
               </div>
             </div>
 
-            {/* Included list */}
             <div className="p-6">
-              <ul className="space-y-2.5 mb-6">
+              {/* Included list */}
+              <ul className="space-y-2 mb-6">
                 {[
                   'Schedule unlimited future payments',
                   'Calendar & timeline views',
@@ -204,6 +200,79 @@ export default function UpgradePage() {
                 ))}
               </ul>
 
+              {/* Payment method selector */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                  Choose payment method
+                </p>
+
+                {loadingMethods ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                  </div>
+                ) : methods.length === 0 ? (
+                  <p className="text-xs text-rose-500 text-center py-3">
+                    Could not load payment methods. Please refresh.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {methods.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedMethod(m)}
+                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all ${
+                          selectedMethod?.id === m.id
+                            ? 'border-violet-500 bg-violet-50 shadow-sm'
+                            : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {/* Payment method logo */}
+                        <div className="h-8 flex items-center justify-center">
+                          {m.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={m.imageUrl}
+                              alt={m.nameEn}
+                              className="h-7 w-auto object-contain"
+                              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-slate-600">{m.nameEn}</span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-semibold ${
+                          selectedMethod?.id === m.id ? 'text-violet-700' : 'text-slate-600'
+                        }`}>
+                          {m.nameEn}
+                        </span>
+                        {selectedMethod?.id === m.id && (
+                          <div className="w-4 h-4 bg-violet-500 rounded-full flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Test card hint — only for Visa/Master */}
+              {selectedMethod && /visa|master/i.test(selectedMethod.nameEn) && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-0.5">
+                  <p className="font-semibold">🧪 Test card:</p>
+                  <p>Card: <span className="font-mono font-bold">4508750015741019</span></p>
+                  <p>Expiry: <span className="font-mono">Any</span> · CVV: <span className="font-mono">Any</span></p>
+                </div>
+              )}
+
+              {selectedMethod && /knet/i.test(selectedMethod.nameEn) && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-0.5">
+                  <p className="font-semibold">🧪 Test card:</p>
+                  <p>Card: <span className="font-mono font-bold">8888880000000001</span></p>
+                  <p>Expiry: <span className="font-mono">09/30</span> · PIN: <span className="font-mono">Any 4 digits</span></p>
+                </div>
+              )}
+
               {error && (
                 <p className="text-rose-600 text-sm mb-4 p-3 bg-rose-50 rounded-xl border border-rose-200">
                   {error}
@@ -212,32 +281,23 @@ export default function UpgradePage() {
 
               <button
                 onClick={handlePay}
-                disabled={loading}
+                disabled={paying || !selectedMethod || loadingMethods}
                 className="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold py-3.5 rounded-2xl hover:from-violet-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
               >
-                {loading ? (
+                {paying ? (
                   <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     Redirecting to payment…
                   </>
                 ) : (
                   <>
-                    Pay with KNET — 1.000 KD
+                    Pay with {selectedMethod?.nameEn ?? '…'} — 1.000 KD
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
 
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-left space-y-1">
-                <p className="font-semibold">🧪 Test mode — use this card:</p>
-                <p>Card: <span className="font-mono font-bold">4508750015741019</span></p>
-                <p>Expiry: <span className="font-mono">Any</span> &nbsp; CVV: <span className="font-mono">Any</span></p>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-400">
+              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-400">
                 <Shield className="w-3.5 h-3.5" />
                 Secured by MyFatoorah · Test mode active
               </div>

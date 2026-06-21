@@ -35,7 +35,13 @@ serve(async (req: Request) => {
       })
     }
 
-    const { customerName, customerEmail, callbackUrl } = await req.json()
+    const { customerName, customerEmail, callbackUrl, paymentMethodId } = await req.json()
+
+    if (!paymentMethodId) {
+      return new Response(JSON.stringify({ error: 'paymentMethodId is required' }), {
+        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
 
     // Falls back to the public MyFatoorah demo token for test mode
     const apiKey = Deno.env.get('MYFATOORAH_API_KEY')
@@ -54,28 +60,6 @@ serve(async (req: Request) => {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
       })
     }
-
-    // Step 1: Get available payment methods for KWD
-    const initRes = await fetch(`${MYFATOORAH_BASE}/v2/InitiatePayment`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ InvoiceAmount: PLAN_PRICE, CurrencyIso: CURRENCY }),
-    })
-    const initData = await initRes.json()
-
-    // Prefer Visa/Master over KNET — KNET test pages often block keyboard input.
-    // Fall back to first available method, then hard-coded 2 (Visa/Master default).
-    const methods: Array<{ PaymentMethodId: number; PaymentMethodEn?: string }> =
-      initData.Data?.PaymentMethods ?? []
-    const visaMethod = methods.find(m =>
-      /visa|master|credit|card/i.test(m.PaymentMethodEn ?? '')
-    )
-    const paymentMethodId = visaMethod?.PaymentMethodId
-      ?? methods[0]?.PaymentMethodId
-      ?? 2
 
     // Step 2: Create the payment invoice
     const execRes = await fetch(`${MYFATOORAH_BASE}/v2/ExecutePayment`, {
