@@ -37,8 +37,9 @@ serve(async (req: Request) => {
 
     const { customerName, customerEmail, callbackUrl } = await req.json()
 
+    // Falls back to the public MyFatoorah demo token for test mode
     const apiKey = Deno.env.get('MYFATOORAH_API_KEY')
-    if (!apiKey) throw new Error('MYFATOORAH_API_KEY secret is not set')
+      ?? 'SK_KWT_vVZlnnAqu8jRByOWaRPNId4ShzEDNt256dvnjebuyzo52dXjAfRx2ixW5umjWSUx'
 
     // Check if user already has an active subscription
     const { data: existing } = await supabaseAdmin
