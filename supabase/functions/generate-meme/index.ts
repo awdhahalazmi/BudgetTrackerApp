@@ -1,19 +1,20 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:3000'
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-// All verified working template IDs on api.memegen.link
 const TEMPLATES = [
   'drake', 'fry', 'doge', 'fine', 'harold', 'rollsafe',
   'gru', 'db', 'success', 'both', 'money', 'wallet',
   'sadfrog', 'regret', 'blb', 'yuno', 'noidea', 'cryingfloor',
 ]
 
-// Encode text for memegen.link path segments
 function enc(text: string): string {
   return String(text)
     .replace(/%/g, '~p')
@@ -27,7 +28,6 @@ function enc(text: string): string {
 function buildMemeUrl(template: string, lines: string[]): string {
   const safeTemplate = TEMPLATES.includes(template) ? template : 'fine'
   const encoded = lines.map(enc)
-  // gru needs 4 lines — duplicate last line if short
   const finalLines = safeTemplate === 'gru'
     ? [...encoded, ...encoded].slice(0, 4)
     : encoded.slice(0, 2)
@@ -46,20 +46,44 @@ const STYLE_HINTS = [
 ]
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { title, amount, category, variant = 0, expenseId = '' } = await req.json()
-    // Short unique suffix so identical expenses still get different memes
+    // Require authenticated user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    )
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const body = await req.json()
+    // Sanitize inputs — truncate to safe lengths, strip control chars
+    const title    = String(body.title    ?? '').slice(0, 100).replace(/[\x00-\x1f]/g, '')
+    const amount   = String(body.amount   ?? '').slice(0, 20)
+    const category = String(body.category ?? '').slice(0, 50).replace(/[\x00-\x1f]/g, '')
+    const variant  = Number(body.variant) || 0
+    const expenseId = String(body.expenseId ?? '').slice(0, 36)
+
     const uniqueSuffix = expenseId.slice(-6).toUpperCase() || String(variant)
 
     const apiKey = Deno.env.get('OPENROUTER_API_KEY')
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'OPENROUTER_API_KEY secret is not set' }),
-        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: 'Meme service unavailable' }),
+        { status: 503, headers: { ...CORS, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -71,19 +95,18 @@ EXPENSE:
 - Title: "${title}"
 - Amount: ${amount} KD
 - Category: ${category}
-- Style: ${styleHint} (variant ${variant + 1} — ${variant > 0 ? 'pick a DIFFERENT template and joke than the obvious default' : 'use the most fitting classic meme'})
-- Variety seed: ${uniqueSuffix} (internal use only — do NOT include this in any meme line)
+- Style: ${styleHint} (variant ${variant + 1})
+- Variety seed: ${uniqueSuffix} (internal — do NOT include in meme text)
 
 AVAILABLE TEMPLATES (use ONLY these exact IDs):
 ${TEMPLATES.join(', ')}
 
 RULES:
-• Keep each line under 55 characters
-• Make it funny, punchy, and relatable to someone who just spent money
-• NEVER include the variety seed or any ID/code in the meme text
-• The "gru" template needs exactly 4 lines (like a plan that goes wrong)
-• All other templates need exactly 2 lines (top text, bottom text)
-• Return ONLY a valid JSON object — no explanation, no markdown, no code block
+- Keep each line under 55 characters
+- Make it funny, punchy, and relatable
+- The "gru" template needs exactly 4 lines
+- All other templates need exactly 2 lines
+- Return ONLY valid JSON
 
 RESPONSE FORMAT:
 {"template":"<id>","lines":["<line1>","<line2>"]}`
@@ -105,14 +128,12 @@ RESPONSE FORMAT:
     })
 
     if (!response.ok) {
-      const errText = await response.text()
-      throw new Error(`OpenRouter ${response.status}: ${errText}`)
+      throw new Error(`OpenRouter error: ${response.status}`)
     }
 
     const data = await response.json()
     const rawContent = data.choices?.[0]?.message?.content?.trim() ?? ''
 
-    // Strip markdown code fences if the model wrapped the JSON
     const jsonStr = rawContent
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -123,12 +144,8 @@ RESPONSE FORMAT:
     try {
       parsed = JSON.parse(jsonStr)
     } catch {
-      // If AI returned garbage, fall back to a safe default
       console.error('AI returned non-JSON:', rawContent)
-      parsed = {
-        template: 'fine',
-        lines: [`Spent ${amount} KD on ${title}`, 'This is fine'],
-      }
+      parsed = { template: 'fine', lines: [`Spent ${amount} KD on ${title}`, 'This is fine'] }
     }
 
     const url = buildMemeUrl(parsed.template, parsed.lines ?? [])
@@ -139,7 +156,7 @@ RESPONSE FORMAT:
   } catch (err) {
     console.error('generate-meme error:', err)
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: 'An internal error occurred' }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }

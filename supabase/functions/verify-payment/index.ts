@@ -1,19 +1,20 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:3000'
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const MYFATOORAH_BASE = 'https://apitest.myfatoorah.com'
+const MYFATOORAH_BASE = Deno.env.get('MYFATOORAH_BASE') || 'https://apitest.myfatoorah.com'
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    // Require authenticated user
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -51,18 +52,12 @@ serve(async (req: Request) => {
 
     const statusRes = await fetch(`${MYFATOORAH_BASE}/v2/GetPaymentStatus`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ Key: paymentId, KeyType: 'PaymentId' }),
     })
 
     const statusData = await statusRes.json()
-
-    if (!statusData.IsSuccess) {
-      throw new Error('Failed to retrieve payment status')
-    }
+    if (!statusData.IsSuccess) throw new Error('Failed to retrieve payment status')
 
     const invoiceStatus: string = statusData.Data?.InvoiceStatus ?? 'Pending'
     const invoiceId = String(statusData.Data?.InvoiceId ?? '')
@@ -91,16 +86,10 @@ serve(async (req: Request) => {
 
     const { error: updateError } = await supabaseAdmin
       .from('planner_subscriptions')
-      .update({
-        status: isPaid ? 'active' : 'failed',
-        payment_id: paymentId,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ status: isPaid ? 'active' : 'failed', payment_id: paymentId, updated_at: new Date().toISOString() })
       .eq('invoice_id', invoiceId)
 
-    if (updateError) {
-      console.error('Failed to update subscription:', updateError.message)
-    }
+    if (updateError) console.error('Failed to update subscription:', updateError.message)
 
     return new Response(
       JSON.stringify({ status: isPaid ? 'success' : 'failed', invoiceStatus, invoiceId }),

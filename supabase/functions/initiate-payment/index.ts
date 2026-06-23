@@ -1,13 +1,15 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:3000'
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const MYFATOORAH_BASE = 'https://apitest.myfatoorah.com'
+const MYFATOORAH_BASE = Deno.env.get('MYFATOORAH_BASE') || 'https://apitest.myfatoorah.com'
 const CURRENCY = 'KWD'
 
 // Prices are enforced server-side — never trust the client for amounts
@@ -95,29 +97,19 @@ serve(async (req: Request) => {
         ErrorUrl: callbackUrl,
         Language: 'en',
         CustomerReference: user.id,
-        InvoiceItems: [{
-          ItemName: planMeta.label,
-          Quantity: 1,
-          UnitPrice: planMeta.price,
-        }],
+        InvoiceItems: [{ ItemName: planMeta.label, Quantity: 1, UnitPrice: planMeta.price }],
       }),
     })
 
     const execData = await execRes.json()
-
-    if (!execData.IsSuccess) {
-      throw new Error('Payment initiation failed')
-    }
+    if (!execData.IsSuccess) throw new Error('Payment initiation failed')
 
     const invoiceId = String(execData.Data.InvoiceId)
     const paymentUrl = execData.Data.PaymentURL
 
     await supabaseAdmin.from('planner_subscriptions').upsert({
-      user_id: user.id,
-      status: 'pending',
-      plan: planKey,
-      invoice_id: invoiceId,
-      payment_id: null,
+      user_id: user.id, status: 'pending', plan: planKey,
+      invoice_id: invoiceId, payment_id: null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
 

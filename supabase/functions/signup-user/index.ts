@@ -1,16 +1,18 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'http://localhost:3000'
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
     const { email, password } = await req.json()
@@ -22,17 +24,28 @@ serve(async (req: Request) => {
       )
     }
 
-    const supabaseAdmin = createClient(
+    if (!EMAIL_RE.test(email)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email format' }),
+        { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    if (password.length < 8) {
+      return new Response(
+        JSON.stringify({ error: 'Password must be at least 8 characters' }),
+        { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // Use anon client + standard GoTrue signUp — respects Supabase rate limits
+    // and email verification settings configured in the dashboard
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
     )
 
-    // Use admin API to create user — bypasses GoTrue email validation
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // auto-confirm so they can sign in immediately
-    })
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       return new Response(
@@ -46,8 +59,9 @@ serve(async (req: Request) => {
       { headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   } catch (err) {
+    console.error('signup-user error:', err)
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: 'An internal error occurred' }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }
