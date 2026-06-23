@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import logger from '../lib/logger.js'
 
 const router = Router()
 
@@ -45,7 +46,7 @@ router.get('/', async (req, res) => {
 
     res.json(result)
   } catch (err) {
-    console.error('GET /categories error:', err.message)
+    logger.error('GET /categories', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -78,7 +79,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(data)
   } catch (err) {
-    console.error('POST /categories error:', err.message)
+    logger.error('POST /categories', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -107,7 +108,7 @@ router.put('/:id', async (req, res) => {
 
     res.json(data)
   } catch (err) {
-    console.error('PUT /categories error:', err.message)
+    logger.error('PUT /categories', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -128,7 +129,7 @@ router.delete('/:id', async (req, res) => {
 
     res.status(204).send()
   } catch (err) {
-    console.error('DELETE /categories error:', err.message)
+    logger.error('DELETE /categories', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })

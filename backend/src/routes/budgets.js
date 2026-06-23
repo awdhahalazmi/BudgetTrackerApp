@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import logger from '../lib/logger.js'
 
 const router = Router()
 
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 
     res.json(month ? data[0] || null : data)
   } catch (err) {
-    console.error('GET /budgets error:', err.message)
+    logger.error('GET /budgets', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -64,7 +65,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(budget)
   } catch (err) {
-    console.error('POST /budgets error:', err.message)
+    logger.error('POST /budgets', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -89,7 +90,7 @@ router.put('/:id', async (req, res) => {
 
     res.json(data)
   } catch (err) {
-    console.error('PUT /budgets error:', err.message)
+    logger.error('PUT /budgets', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
@@ -110,7 +111,7 @@ router.delete('/:id', async (req, res) => {
 
     res.status(204).send()
   } catch (err) {
-    console.error('DELETE /budgets error:', err.message)
+    logger.error('DELETE /budgets', { error: err.message })
     res.status(500).json({ error: 'An internal error occurred' })
   }
 })
