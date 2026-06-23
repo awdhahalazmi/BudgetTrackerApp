@@ -8,8 +8,13 @@ const CORS = {
 }
 
 const MYFATOORAH_BASE = 'https://apitest.myfatoorah.com'
-const PLAN_PRICE = 1.000
 const CURRENCY = 'KWD'
+
+// Prices are enforced server-side — never trust the client for amounts
+const VALID_PLANS: Record<string, { price: number; label: string }> = {
+  basic: { price: 5.000, label: 'Basic Planner – Lifetime Access' },
+  pro:   { price: 10.000, label: 'Pro Planner – Lifetime Access' },
+}
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -35,7 +40,7 @@ serve(async (req: Request) => {
       })
     }
 
-    const { customerName, customerEmail, callbackUrl, paymentMethodId } = await req.json()
+    const { customerName, customerEmail, callbackUrl, paymentMethodId, plan } = await req.json()
 
     if (!paymentMethodId) {
       return new Response(JSON.stringify({ error: 'paymentMethodId is required' }), {
@@ -43,11 +48,22 @@ serve(async (req: Request) => {
       })
     }
 
-    // Falls back to the public MyFatoorah demo token for test mode
-    const apiKey = Deno.env.get('MYFATOORAH_API_KEY')
-      ?? 'SK_KWT_vVZlnnAqu8jRByOWaRPNId4ShzEDNt256dvnjebuyzo52dXjAfRx2ixW5umjWSUx'
+    const planKey = (plan ?? 'basic').toLowerCase()
+    const planMeta = VALID_PLANS[planKey]
+    if (!planMeta) {
+      return new Response(JSON.stringify({ error: 'Invalid plan' }), {
+        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
 
-    // Check if user already has an active subscription
+    const apiKey = Deno.env.get('MYFATOORAH_API_KEY')
+    if (!apiKey) {
+      console.error('MYFATOORAH_API_KEY is not set')
+      return new Response(JSON.stringify({ error: 'Payment service unavailable' }), {
+        status: 503, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
     const { data: existing } = await supabaseAdmin
       .from('planner_subscriptions')
       .select('status')
@@ -61,7 +77,6 @@ serve(async (req: Request) => {
       })
     }
 
-    // Step 2: Create the payment invoice
     const execRes = await fetch(`${MYFATOORAH_BASE}/v2/ExecutePayment`, {
       method: 'POST',
       headers: {
@@ -75,15 +90,15 @@ serve(async (req: Request) => {
         MobileCountryCode: '+965',
         CustomerMobile: '00000000',
         CustomerEmail: customerEmail,
-        InvoiceValue: PLAN_PRICE,
+        InvoiceValue: planMeta.price,
         CallBackUrl: callbackUrl,
         ErrorUrl: callbackUrl,
         Language: 'en',
         CustomerReference: user.id,
         InvoiceItems: [{
-          ItemName: 'Payment Planner – Lifetime Access',
+          ItemName: planMeta.label,
           Quantity: 1,
-          UnitPrice: PLAN_PRICE,
+          UnitPrice: planMeta.price,
         }],
       }),
     })
@@ -91,16 +106,16 @@ serve(async (req: Request) => {
     const execData = await execRes.json()
 
     if (!execData.IsSuccess) {
-      throw new Error(execData.Message || 'MyFatoorah ExecutePayment failed')
+      throw new Error('Payment initiation failed')
     }
 
     const invoiceId = String(execData.Data.InvoiceId)
     const paymentUrl = execData.Data.PaymentURL
 
-    // Store pending subscription (upsert: one record per user)
     await supabaseAdmin.from('planner_subscriptions').upsert({
       user_id: user.id,
       status: 'pending',
+      plan: planKey,
       invoice_id: invoiceId,
       payment_id: null,
       updated_at: new Date().toISOString(),
@@ -113,7 +128,7 @@ serve(async (req: Request) => {
   } catch (err) {
     console.error('initiate-payment error:', err)
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: 'An internal error occurred' }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }

@@ -29,7 +29,8 @@ router.get('/', async (req, res) => {
 
     res.json(data)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error('GET /expenses error:', err.message)
+    res.status(500).json({ error: 'An internal error occurred' })
   }
 })
 
@@ -43,6 +44,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' })
     }
 
+    // Verify the budget belongs to this user before inserting
+    const { data: budget, error: budgetError } = await req.db
+      .from('budgets')
+      .select('id')
+      .eq('id', budget_id)
+      .eq('user_id', userId)
+      .single()
+
+    if (budgetError || !budget) {
+      return res.status(403).json({ error: 'Budget not found or access denied' })
+    }
+
     const { data, error } = await req.db
       .from('expenses')
       .insert({ user_id: userId, budget_id, category_id, title, amount, date })
@@ -53,7 +66,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(data)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error('POST /expenses error:', err.message)
+    res.status(500).json({ error: 'An internal error occurred' })
   }
 })
 
@@ -83,7 +97,8 @@ router.put('/:id', async (req, res) => {
 
     res.json(data)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error('PUT /expenses error:', err.message)
+    res.status(500).json({ error: 'An internal error occurred' })
   }
 })
 
@@ -103,7 +118,8 @@ router.delete('/:id', async (req, res) => {
 
     res.status(204).send()
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    console.error('DELETE /expenses error:', err.message)
+    res.status(500).json({ error: 'An internal error occurred' })
   }
 })
 

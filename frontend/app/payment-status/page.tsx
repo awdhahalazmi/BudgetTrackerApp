@@ -30,9 +30,13 @@ function PaymentStatusContent() {
     const verify = async () => {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const { data: { session } } = await supabase.auth.getSession()
         const res = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ paymentId }),
         })
         const data = await res.json()

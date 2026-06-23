@@ -7,7 +7,6 @@ const CORS = {
 }
 
 const MYFATOORAH_BASE = 'https://apitest.myfatoorah.com'
-const PLAN_PRICE = 1.000
 const CURRENCY = 'KWD'
 
 serve(async (req: Request) => {
@@ -15,7 +14,12 @@ serve(async (req: Request) => {
 
   try {
     const apiKey = Deno.env.get('MYFATOORAH_API_KEY')
-      ?? 'SK_KWT_vVZlnnAqu8jRByOWaRPNId4ShzEDNt256dvnjebuyzo52dXjAfRx2ixW5umjWSUx'
+    if (!apiKey) {
+      console.error('MYFATOORAH_API_KEY is not set')
+      return new Response(JSON.stringify({ error: 'Payment service unavailable' }), {
+        status: 503, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
 
     const res = await fetch(`${MYFATOORAH_BASE}/v2/InitiatePayment`, {
       method: 'POST',
@@ -23,13 +27,14 @@ serve(async (req: Request) => {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ InvoiceAmount: PLAN_PRICE, CurrencyIso: CURRENCY }),
+      // Use Pro price to ensure all eligible methods are returned
+      body: JSON.stringify({ InvoiceAmount: 10.000, CurrencyIso: CURRENCY }),
     })
 
     const data = await res.json()
 
     if (!data.IsSuccess) {
-      throw new Error(data.Message || 'Failed to fetch payment methods')
+      throw new Error('Failed to fetch payment methods')
     }
 
     const methods = (data.Data?.PaymentMethods ?? []).map((m: {
@@ -55,7 +60,7 @@ serve(async (req: Request) => {
   } catch (err) {
     console.error('get-payment-methods error:', err)
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: 'An internal error occurred' }),
       { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }
